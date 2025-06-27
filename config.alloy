@@ -1,15 +1,19 @@
-// 1. Definiere ein Ziel (Exporter), wohin die Logs gesendet werden sollen.
-// In unserem Fall ist das der Loki-Container.
-loki.write "default" {
-	endpoint {
-		url = "http://loki:3100/loki/api/v1/push"
-	}
+// Definiere das Ziel: unser Loki-Container
+loki.write "local_loki" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
 }
 
-// 2. Definiere eine Quelle (Scraper), woher die Logs kommen.
-// loki.source.docker verbindet sich mit dem Docker-Daemon und entdeckt alle
-// laufenden Container automatisch.
+// Definiere, WIE Container gefunden werden sollen.
+discovery.docker "all_containers" {
+	host = "unix:///var/run/docker.sock"
+}
+
+// Definiere die Quelle (Log-Sammlung) und verbinde sie mit der Discovery.
 loki.source.docker "all_containers" {
+    // HINZUGEFÜGT: Diese Zeile wurde basierend auf dem Fehler ergänzt.
 	host       = "unix:///var/run/docker.sock"
-	forward_to = [loki.write.default.receiver] // Leite die gefundenen Logs an unser Loki-Ziel weiter.
+	targets    = discovery.docker.all_containers.targets
+	forward_to = [loki.write.default.receiver]
 }
