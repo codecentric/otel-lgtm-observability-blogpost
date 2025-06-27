@@ -1,0 +1,8 @@
+version: "3.8"
+
+services:
+  python-app:
+    build: ./python-app
+    container_name: python-app
+    ports:
+      - "5002:5002"
