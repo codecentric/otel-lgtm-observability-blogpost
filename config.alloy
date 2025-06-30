@@ -1,19 +1,41 @@
-// Definiere das Ziel: unser Loki-Container
-loki.write "local_loki" {
-    endpoint {
-        url = "http://loki:3100/loki/api/v1/push"
-    }
+// ###############################
+// #### Logging Configuration ####
+// ###############################
+
+livedebugging {
+  enabled = true
 }
 
-// Definiere, WIE Container gefunden werden sollen.
-discovery.docker "all_containers" {
-	host = "unix:///var/run/docker.sock"
+
+// Discover Docker containers and extract metadata.
+discovery.docker "linux" {
+  host = "unix:///var/run/docker.sock"
 }
 
-// Definiere die Quelle (Log-Sammlung) und verbinde sie mit der Discovery.
-loki.source.docker "all_containers" {
-    // HINZUGEFÜGT: Diese Zeile wurde basierend auf dem Fehler ergänzt.
-	host       = "unix:///var/run/docker.sock"
-	targets    = discovery.docker.all_containers.targets
-	forward_to = [loki.write.default.receiver]
+// Define a relabeling rule to create a service name from the container name.
+discovery.relabel "logs_integrations_docker" {
+      targets = []
+
+      rule {
+          source_labels = ["__meta_docker_container_name"]
+          regex = "/(.*)"
+          target_label = "service_name"
+      }
+
+  }
+
+
+// Configure a loki.source.docker component to collect logs from Docker containers.
+loki.source.docker "default" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.linux.targets
+  labels     = {"platform" = "docker"}
+  relabel_rules = discovery.relabel.logs_integrations_docker.rules
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
 }
