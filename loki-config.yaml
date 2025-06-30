@@ -1,42 +1,65 @@
+# Deaktiviert die Notwendigkeit einer Authentifizierung für den Zugriff auf Loki.
+# Ideal für lokale Test-Setups.
 auth_enabled: false
 
+# Konfiguriert den Webserver von Loki.
 server:
+  # Legt den Port fest, auf dem der Loki-Server auf Anfragen lauscht.
   http_listen_port: 3100
 
-
+# Definiert gemeinsame Konfigurationen, die von mehreren Loki-Komponenten genutzt werden.
 common:
+  # Die Adresse, unter der sich diese Loki-Instanz bei anderen Komponenten im Cluster meldet.
   instance_addr: 127.0.0.1
+  # Ein Basisverzeichnis für alle temporären Dateien und Speicherorte.
   path_prefix: /tmp/loki
+  # Definiert den Speicherort für Log-Daten ("chunks") und Regeln.
   storage:
     filesystem:
       chunks_directory: /tmp/loki/chunks
       rules_directory: /tmp/loki/rules
+  # Legt fest, wie oft Daten für Ausfallsicherheit repliziert werden sollen.
   replication_factor: 1
+  # Konfiguriert den "Ring", der für die Koordination zwischen Loki-Instanzen zuständig ist.
   ring:
     kvstore:
+      # Verwendet einen In-Memory-Speicher, der keine externen Abhängigkeiten benötigt.
       store: inmemory
 
+# Konfiguriert das Verhalten für Abfragen über einen Zeitbereich (query ranges).
 query_range:
+  # Definiert einen Cache für Abfrageergebnisse, um wiederholte Anfragen zu beschleunigen.
   results_cache:
     cache:
       embedded_cache:
         enabled: true
         max_size_mb: 100
 
+# Konfiguriert verschiedene Limits, um die Ressourcennutzung zu steuern.
 limits_config:
+  # Erlaubt das Erstellen von Metriken aus Log-Daten.
   metric_aggregation_enabled: true
 
+# Definiert, wie und wo Log-Daten und deren Index über die Zeit gespeichert werden.
+# Dies ist eine der wichtigsten Konfigurationen.
 schema_config:
   configs:
+    # Definiert eine Konfiguration, die ab einem bestimmten Datum gültig ist.
     - from: 2020-10-24
+      # Verwendet "tsdb", das Time Series Database-Format, als Index-Speicher.
       store: tsdb
+      # Gibt an, dass die Daten im lokalen Dateisystem gespeichert werden.
       object_store: filesystem
+      # Legt die zu verwendende Schema-Version fest. v13 ist eine neuere Version.
       schema: v13
+      # Konfiguriert den Index selbst.
       index:
         prefix: index_
         period: 24h
 
+# Konfiguriert einen speziellen Ingester, der Logs basierend auf Mustern verarbeiten kann.
 pattern_ingester:
   enabled: true
+  # Erlaubt die Aggregation von Metriken direkt aus den Mustern.
   metric_aggregation:
     loki_address: localhost:3100
