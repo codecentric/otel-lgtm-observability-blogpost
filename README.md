@@ -89,3 +89,9 @@ Grafana ist das zentrale Werkzeug, um deine Logs zu visualisieren.
 
 Du siehst nun alle Logs, die von deiner FastAPI-Anwendung erzeugt wurden. Passe bei Bedarf den Zeitbereich oben rechts
 an (z.B. auf "Last 5 minutes").
+
+# Todo
+- zero code implementation
+- send info via grpc
+- connect traces and logs
+- muss in der tempo yaml noch http rein?

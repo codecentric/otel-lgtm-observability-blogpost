@@ -21,7 +21,7 @@ help:
 # Installiert die Python-Pakete für die lokale Entwicklung.
 install:
 	@echo "--> Installiere Python-Abhängigkeiten mit uv..."
-	(cd python-app && uv pip install -r requirements.txt)
+	(cd python-app && pip install -r requirements.txt)
 
 # Startet die FastAPI-App lokal mit Hot-Reload.
 run:
@@ -31,7 +31,7 @@ run:
 # Startet die gesamte Docker-Compose-Umgebung im Hintergrund.
 up:
 	@echo "--> Starte Docker-Compose-Stack im Hintergrund..."
-	docker-compose up -d
+	docker-compose up --build
 
 # Stoppt die Docker-Compose-Umgebung.
 down:
