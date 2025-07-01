@@ -31,7 +31,7 @@ run:
 # Startet die gesamte Docker-Compose-Umgebung im Hintergrund.
 up:
 	@echo "--> Starte Docker-Compose-Stack im Hintergrund..."
-	docker-compose up -d
+	docker-compose up --build
 
 # Stoppt die Docker-Compose-Umgebung.
 down:
