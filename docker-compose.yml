@@ -11,14 +11,6 @@ services:
       - "5002:5002"
     volumes:
       - ./logs:/app/logs/
-    environment:
-      - OTEL_SERVICE_NAME=python-app
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
-      - OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true # wichtig für auto inst und ersetzt LoggingInstrumentor
-      - OTEL_TRACES_EXPORTER=console # todo: brauche ich noch für zero code und verhindert, dass nach otlp gesucht wird
-      - OTEL_LOGS_EXPORTER=console
-      - OTEL_METRICS_EXPORTER=console
-      - OTEL_PYTHON_LOG_CORRELATION=true
     networks:
       - monitoring-net
 
@@ -32,7 +24,6 @@ services:
       - grafana-data:/var/lib/grafana
     depends_on:
       - loki
-      - tempo
     entrypoint:
       - sh
       - -euc
@@ -41,23 +32,15 @@ services:
         cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
         apiVersion: 1
         datasources:
-        # Loki Konfiguration
         - name: Loki
           type: loki
           access: proxy
+          orgId: 1
           url: 'http://loki:3100'
+          basicAuth: false
           isDefault: true
-        # Tempo Konfiguration
-        - name: Tempo
-          type: tempo
-          access: proxy
-          url: 'http://tempo:3200'
-          # Verknüpfung von Tempo zu Loki, um von Traces zu Logs zu springen
-          tracesToLogs:
-            datasourceUid: 'Loki' # Name der Loki-Datenquelle
-            tags: ['job', 'instance', 'pod', 'namespace', 'service_name']
-            mappedTags: [{ key: 'service.name', value: 'service' }]
-            filterByTraceID: true
+          version: 1
+          editable: true
         EOF
         /run.sh
     networks:
@@ -75,25 +58,12 @@ services:
     networks:
       - monitoring-net
 
-  # Definiert Tempo, den Dienst zum Speichern der Traces.
-  tempo:
-    image: grafana/tempo:latest
-    container_name: tempo
-    command: [ "-config.file=/etc/tempo-config.yaml" ]
-    volumes:
-      - ./tempo-config.yaml:/etc/tempo-config.yaml
-    ports:
-      - "3200:3200"
-    networks:
-      - monitoring-net
-
-  # Definiert Alloy, den Agenten zum Sammeln und Weiterleiten der Logs und Traces an Loki.
+  # Definiert Alloy, den Agenten zum Sammeln und Weiterleiten der Logs an Loki.
   alloy:
     image: grafana/alloy:latest
     container_name: alloy
     ports:
       - "12345:12345"
-      - "4318:4318" # Port für den OTLP-Receiver öffnen
     volumes:
       - ./config.alloy:/etc/alloy/config.alloy
       # die API-Schnittstelle zum Docker-Daemon, der alle deine Container verwaltet.
@@ -103,7 +73,6 @@ services:
     depends_on:
       - python-app
       - loki
-      - tempo
     networks:
       - monitoring-net
 

@@ -61,28 +61,3 @@ loki.write "local" {
     url = "http://loki:3100/loki/api/v1/push"
   }
 }
-
-// Block 5: Tracing konfigurieren
-// Empfängt Traces von der Python-App im OTLP-Format.
-otelcol.receiver.otlp "default" {
-  grpc {
-    endpoint = "0.0.0.0:4317"
-  }
-  http {
-    endpoint = "0.0.0.0:4318"
-  }
-  // Definiert, wohin die empfangenen Daten weitergeleitet werden.
-  output {
-    traces = [otelcol.exporter.otlp.default.input]
-  }
-}
-
-
-otelcol.exporter.otlp "default" {
-  client {
-    endpoint = "tempo:4317"
-    tls {
-      insecure = true
-    }
-  }
-}
