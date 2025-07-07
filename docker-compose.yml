@@ -12,7 +12,8 @@ services:
     environment:
       - OTEL_SERVICE_NAME=python-app
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
-      - OTEL_METRICS_EXPORTER=console
+      # Stellt sicher, dass die auto-instrumentierten Metriken per OTLP gesendet werden
+      - OTEL_METRICS_EXPORTER=otlp
       # Sagt der Auto-Instrumentierung, dass sie auch das Logging übernehmen soll
       - OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
       # Stellt sicher, dass die erfassten Logs per OTLP gesendet werden
@@ -73,6 +74,21 @@ services:
       - python-app
       - loki
       - tempo
+    networks:
+      - monitoring-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      # Dadurch öffnet Prometheus den Endpunkt /api/v1/write, den Alloy zum Senden der Metriken verwendet.
+      # Das ist notwendig, damit die custom metrics, die wir mit otel in app.py erstellen, bei Prometheus landen.
+      - --web.enable-remote-write-receiver
     networks:
       - monitoring-net
 

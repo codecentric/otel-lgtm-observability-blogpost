@@ -1,0 +1,15 @@
+# Globale Konfigurationseinstellungen
+global:
+  # Legt fest, wie oft die Ziele standardmäßig abgefragt (gescraped) werden.
+  scrape_interval: 15s
+  # Legt fest, wie lange eine Abfrage dauern darf, bevor sie abbricht.
+  scrape_timeout: 10s
+
+# Eine Liste der Scrape-Konfigurationen, die definieren, welche Ziele Prometheus abfragen soll.
+scrape_configs:
+  # Ein Job namens 'prometheus', der die Metriken des Prometheus-Servers selbst sammelt.
+  # Dies ist nützlich für das Monitoring des Zustands von Prometheus.
+  - job_name: 'prometheus'
+    static_configs:
+      # Definiert das Ziel, das abgefragt werden soll. 'localhost:9090' ist der Prometheus-Server selbst.
+      - targets: ['localhost:9090']

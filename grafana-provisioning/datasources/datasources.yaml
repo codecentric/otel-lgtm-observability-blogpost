@@ -21,3 +21,7 @@ datasources:
           target:
             expr: '{service_name="$$serviceName"} | json | traceid="$$traceID"'
           field: "traceID"
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
