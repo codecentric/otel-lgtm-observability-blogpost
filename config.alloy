@@ -21,6 +21,7 @@ otelcol.receiver.otlp "default" {
   output {
     traces = [otelcol.exporter.otlp.to_tempo.input]
     logs   = [otelcol.exporter.loki.to_loki.input]
+    metrics = [otelcol.exporter.prometheus.to_prometheus_exporter.input]
   }
 }
 
@@ -43,5 +44,20 @@ otelcol.exporter.loki "to_loki" {
 loki.write "local" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// 5. NEU: Definiert den OTel-Prometheus-Exporter als Vermittler.
+// Er nimmt die Metriken vom OTLP-Receiver entgegen...
+otelcol.exporter.prometheus "to_prometheus_exporter" {
+  // ... und leitet sie an die Prometheus remote_write-Komponente weiter.
+  forward_to = [prometheus.remote_write.to_prometheus.receiver]
+}
+
+// 6. Definiert den Exporter, um Metriken an den Prometheus-Server zu senden.
+// Diese Komponente bleibt unverändert.
+prometheus.remote_write "to_prometheus" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
   }
 }
