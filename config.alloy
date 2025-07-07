@@ -9,55 +9,39 @@ livedebugging {
 }
 
 
-// Block 1: Container entdecken (Service Discovery)
-// Diese Komponente ist dafür zuständig, alle laufenden Docker-Container zu finden.
-// Sie stellt eine Liste von "Zielen" (targets) bereit, die von anderen Komponenten genutzt werden kann.
-discovery.docker "linux" {
-  // Gibt den Pfad zum Docker-Socket an, über den Alloy mit dem Docker-Daemon kommuniziert.
-  host = "unix:///var/run/docker.sock"
+// #### Traces & Logs Pipeline ####
+
+// 1. Empfängt Traces und Logs von der Python-App im OTLP-Format.
+// Hier kann ich mir im Live Debugger die rohen Logs und Traces anschauen. Logs haben nun auch Metadaten zB Trace ID
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  // Leitet die Daten an die entsprechenden Exporter weiter.
+  output {
+    traces = [otelcol.exporter.otlp.to_tempo.input]
+    logs   = [otelcol.exporter.loki.to_loki.input]
+  }
 }
 
-// Block 2: Labels umschreiben (Relabeling)
-// Diese Komponente definiert Regeln, um die Metadaten (Labels) der entdeckten Ziele zu verändern.
-discovery.relabel "logs_integrations_docker" {
-      // Normalerweise würden hier die Ziele von discovery.docker übergeben.
-      // In diesem Fall werden die Regeln aber in loki.source.docker direkt angewendet.
-      targets = []
-
-      // Definiert eine einzelne Regel.
-      rule {
-          // Nimmt das automatisch von Docker bereitgestellte Label "__meta_docker_container_name".
-          source_labels = ["__meta_docker_container_name"]
-          // Wendet einen regulären Ausdruck an. "(.*)" fängt den gesamten Containernamen ein.
-          regex = "/(.*)"
-          // Erstellt ein neues Label namens "service_name" mit dem gefangenen Wert.
-          // Beispiel: Aus "__meta_docker_container_name" = "/python-app" wird "service_name" = "python-app".
-          target_label = "service_name"
-      }
+// 2. Definiert den Exporter, um Traces an Tempo zu senden.
+otelcol.exporter.otlp "to_tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls {
+      insecure = true
+    }
   }
+}
 
-
-// Block 3: Logs sammeln (Scraping)
-// Dies ist die Hauptkomponente zum Sammeln von Logs aus Docker-Containern.
-loki.source.docker "default" {
-  // Gibt erneut den Pfad zum Docker-Socket an, um die Log-Streams abzugreifen.
-  host       = "unix:///var/run/docker.sock"
-  // Verwendet die Liste der Ziele, die von der "discovery.docker.linux"-Komponente gefunden wurden.
-  targets    = discovery.docker.linux.targets
-  // Fügt allen Logs, die von dieser Komponente gesammelt werden, ein statisches Label hinzu.
-  labels     = {"platform" = "docker"}
-  // Wendet die oben definierten Umschreibungsregeln an, um das "service_name"-Label zu erstellen.
-  relabel_rules = discovery.relabel.logs_integrations_docker.rules
-  // Leitet alle gesammelten und bearbeiteten Logs an das "loki.write.local"-Ziel weiter.
+// 3. Definiert den Exporter, um die OTLP-Logs an Loki zu senden.
+otelcol.exporter.loki "to_loki" {
   forward_to = [loki.write.local.receiver]
 }
 
-// Block 4: Logs senden (Writing/Exporting)
-// Diese Komponente definiert, wohin die gesammelten Logs gesendet werden sollen.
+// 4. Definiert den finalen Schreib-Endpunkt für Loki.
 loki.write "local" {
-  // Definiert den Endpunkt des Ziels.
   endpoint {
-    // Gibt die URL des Loki-Servers an, so wie er im internen Docker-Netzwerk erreichbar ist.
     url = "http://loki:3100/loki/api/v1/push"
   }
 }
