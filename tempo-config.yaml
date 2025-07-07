@@ -1,0 +1,44 @@
+# Konfiguriert den Webserver von Tempo, über den z.B. die UI erreichbar ist.
+server:
+  http_listen_port: 3200
+
+# Konfiguriert, wie Tempo Traces von externen Quellen (wie Alloy) empfängt.
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          # Lauscht auf allen Netzwerk-Interfaces im Container auf Port 4317.
+          endpoint: 0.0.0.0:4317
+
+
+# Konfiguriert, wie Traces im Arbeitsspeicher gehalten werden, bevor sie auf die Festplatte geschrieben werden.
+ingester:
+  trace_idle_period: 10s
+  # Konfiguriert den Lebenszyklus des Ingesters und wie er sich im internen "Ring" registriert.
+  # Dies ist entscheidend, um "empty ring"-Fehler zu vermeiden.
+  lifecycler:
+    # Definiert, wie sich die Tempo-Komponenten gegenseitig finden.
+    # "inmemory" ist die korrekte Einstellung für einen einzelnen Container.
+    ring:
+      kvstore:
+        store: inmemory
+      # Für einen einzelnen Container ist keine Replikation der Daten nötig.
+      replication_factor: 1
+    # Zeit, die der Ingester wartet, bevor er sich beim Herunterfahren aus dem Ring entfernt.
+    final_sleep: 0s
+
+# Konfiguriert, wie Abfragen (z.B. von Grafana) bearbeitet werden.
+querier:
+  # Sorgt für eine stabile Kommunikation zwischen dem Abfrage-Frontend und den Workern.
+  frontend_worker:
+    match_max_concurrent: true
+
+# Konfiguriert den persistenten Speicher für die Trace-Daten.
+storage:
+  trace:
+    # Gibt an, dass die Traces im lokalen Dateisystem gespeichert werden sollen.
+    backend: local
+    local:
+      # Der Pfad innerhalb des Containers, in dem die Trace-Daten abgelegt werden.
+      path: /tmp/tempo/traces

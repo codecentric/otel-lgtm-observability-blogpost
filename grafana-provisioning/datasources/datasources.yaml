@@ -1,0 +1,23 @@
+apiVersion: 1
+datasources:
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData: { }
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: true
+    jsonData: { }
+    correlations:
+      - targetUID: loki
+        label: "traces2logs"
+        description: "Correlate logs to traces"
+        config:
+          type: "query"
+          target:
+            expr: '{service_name="$$serviceName"} | json | traceid="$$traceID"'
+          field: "traceID"

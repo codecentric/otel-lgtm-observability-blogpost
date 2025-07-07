@@ -9,42 +9,32 @@ services:
     container_name: python-app
     ports:
       - "5002:5002"
-    volumes:
-      - ./logs:/app/logs/
+    environment:
+      - OTEL_SERVICE_NAME=python-app
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_METRICS_EXPORTER=console
+      # Sagt der Auto-Instrumentierung, dass sie auch das Logging übernehmen soll
+      - OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
+      # Stellt sicher, dass die erfassten Logs per OTLP gesendet werden
+      - OTEL_LOGS_EXPORTER=otlp
     networks:
       - monitoring-net
 
   # Definiert Grafana und konfiguriert beim Start automatisch Loki als Datenquelle.
   grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-    depends_on:
-      - loki
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /etc/grafana/provisioning/datasources
-        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
-        apiVersion: 1
-        datasources:
-        - name: Loki
-          type: loki
-          access: proxy
-          orgId: 1
-          url: 'http://loki:3100'
-          basicAuth: false
-          isDefault: true
-          version: 1
-          editable: true
-        EOF
-        /run.sh
-    networks:
-      - monitoring-net
+      image: grafana/grafana:latest
+      container_name: grafana
+      ports:
+        - "3000:3000"
+      volumes:
+        - grafana-data:/var/lib/grafana
+        # Wir lagern die Konfiguration in eine eigene Datei aus, um Syntaxfehler zu vermeiden
+        - ./grafana-provisioning/:/etc/grafana/provisioning/
+      networks:
+        - monitoring-net
+      depends_on:
+        - loki
+        - tempo
 
   # Definiert Loki, den Dienst zum Speichern der Logs.
   loki:
@@ -58,6 +48,18 @@ services:
     networks:
       - monitoring-net
 
+  # Definiert Tempo, den Dienst zum Speichern der Traces.
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo-config.yaml" ]
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo-config.yaml
+    ports:
+      - "3200:3200"
+    networks:
+      - monitoring-net
+
   # Definiert Alloy, den Agenten zum Sammeln und Weiterleiten der Logs an Loki.
   alloy:
     image: grafana/alloy:latest
@@ -66,13 +68,11 @@ services:
       - "12345:12345"
     volumes:
       - ./config.alloy:/etc/alloy/config.alloy
-      # die API-Schnittstelle zum Docker-Daemon, der alle deine Container verwaltet.
-      # Damit sieht alloy alle anderen Container und kann Logs abgreifen
-      - /var/run/docker.sock:/var/run/docker.sock
     command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
     depends_on:
       - python-app
       - loki
+      - tempo
     networks:
       - monitoring-net
 

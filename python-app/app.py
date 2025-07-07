@@ -2,13 +2,47 @@ import logging
 import random
 
 from fastapi import FastAPI, HTTPException
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
 
 # Konfiguriert das grundlegende Logging-Format für die Anwendung.
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+# logging.getLogger().setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
+
+SERVICE_NAME = "python-app"
+
+
+def setup_instrumentation(app_to_instrument: FastAPI):
+    """
+    Konfiguriert und initialisiert OpenTelemetry für Tracing und Logging.
+    Die automatische Instrumentierung erfasst Telemetriedaten an den
+    Grenzen der Systeme aus, z. B. eingehende und ausgehende HTTP-Anfragen,
+    aber sie erfasst nicht, was in der Anwendung vor sich geht.
+    Hierfür müssen wir eine manuelle Instrumentierung schreiben.
+
+    """
+
+    # 1. Ressource definieren: Beschreibt unsere Anwendung.
+    resource = Resource(attributes={"service.name": SERVICE_NAME})
+
+    # 2. Tracer Provider einrichten: Verwaltet die Erstellung von Traces.
+    tracer_provider = TracerProvider(resource=resource)
+
+    trace.set_tracer_provider(tracer_provider)
+
+    # 3. FastAPI-Instrumentierung: Hakt sich in FastAPI ein.
+    # Erstellt automatisch Spans für jeden eingehenden Request.
+    FastAPIInstrumentor.instrument_app(app_to_instrument)
+
 
 app = FastAPI()
+
+setup_instrumentation(app)
 
 
 @app.get("/")
@@ -20,7 +54,7 @@ async def home():
     eine statische JSON-Antwort zurück.
     """
     user_ip = "127.0.0.1"
-    logging.info(f"Anfrage auf der Homepage von IP: {user_ip}")
+    logger.info(f"Anfrage auf der Homepage von IP: {user_ip}")
     return {"message": "Willkommen auf der Homepage!"}
 
 
@@ -37,13 +71,13 @@ async def process_task():
         HTTPException: Wenn die Aufgabe mit einer 20%-Wahrscheinlichkeit fehlschlägt.
     """
     task_id = random.randint(1000, 9999)
-    logging.info(f"Starte Verarbeitung von Task #{task_id}...")
+    logger.info(f"Starte Verarbeitung von Task #{task_id}...")
 
     if random.random() < 0.2:
-        logging.error(
+        logger.error(
             f"Fehler bei der Verarbeitung von Task #{task_id}! Daten konnten nicht gelesen werden."
         )
         raise HTTPException(status_code=500, detail=f"Fehler bei Task #{task_id}")
 
-    logging.info(f"Task #{task_id} erfolgreich abgeschlossen.")
+    logger.info(f"Task #{task_id} erfolgreich abgeschlossen.")
     return {"message": f"Task #{task_id} erledigt!"}
