@@ -9,10 +9,11 @@ livedebugging {
 }
 
 
-// #### Traces & Logs Pipeline ####
+// #### Traces, Logs & Metrics Pipeline ####
 
-// 1. Empfängt Traces und Logs von der Python-App im OTLP-Format.
-// Hier kann ich mir im Live Debugger die rohen Logs und Traces anschauen. Logs haben nun auch Metadaten zB Trace ID
+// 1. Empfängt Traces, Logs und Metriken von der Python-App im OTLP-Format.
+// Hier kann ich mir im Live Debugger die rohen Logs, Traces und custom Metriken anschauen.
+// Logs haben nun auch Metadaten zB Trace ID
 otelcol.receiver.otlp "default" {
   grpc {
     endpoint = "0.0.0.0:4317"
@@ -47,7 +48,7 @@ loki.write "local" {
   }
 }
 
-// 5. NEU: Definiert den OTel-Prometheus-Exporter als Vermittler.
+// 5. Definiert den OTel-Prometheus-Exporter als Vermittler.
 // Er nimmt die Metriken vom OTLP-Receiver entgegen...
 otelcol.exporter.prometheus "to_prometheus_exporter" {
   // ... und leitet sie an die Prometheus remote_write-Komponente weiter.

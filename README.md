@@ -195,6 +195,26 @@ Wichtige Bereiche:
 
     LogRecord: Enthält die eigentliche Log-Information, wie bereits oben beschrieben.
 
+Beispiel eines rohen Metrik Eintrages in alloy `prometheus.remote_write.to_prometheus`
+
+```
+http_server_name="localhost:5002", http_status_code="500", http_target="/task", job="python-app", le="+Inf", net_host_port="5002"}, value=5.000000
+metadata: labels={__name__="tasks_processed_total"}, type="counter", unit="1", help="Zählt die Gesamtzahl der verarbeiteten Tasks"
+sample: ts=1751879547153, labels={__name__="tasks_processed_total", job="python-app", success="true"}, value=8.000000
+```
+
+Wichtige Bereiche:
+
+    __name__="tasks_processed_total": Dies ist der Name der Metrik. Er ist entscheidend, um die Daten in Prometheus oder Grafana abzufragen.
+
+    value=8.000000: Dies ist der eigentliche Messwert. Da es sich um einen Zähler (counter) handelt, zeigt dieser Wert an, dass insgesamt 8 Tasks erfolgreich verarbeitet wurden.
+
+    success="true": Dies ist ein Label (eine Dimension), das den Messwert genauer beschreibt. Es ermöglicht dir, zwischen erfolgreichen (true) und fehlgeschlagenen (false) Tasks zu filtern.
+
+    type="counter": Dieser Metadateneintrag sagt aus, dass es sich um einen Zähler handelt. Das bedeutet, der Wert kann nur ansteigen oder gleich bleiben.
+
+    ts=1751879547153: Dies ist der Zeitstempel (Timestamp) in Millisekunden, der angibt, wann der Messwert erfasst wurde.
+
 Die Debug-Ansicht in Alloy ist ein mächtiges Werkzeug, um Konfigurationsprobleme schnell zu finden und zu verstehen,
 welche Daten deine Anwendung tatsächlich sendet.
 
@@ -251,8 +271,10 @@ Die query für Loki sieht dabei so aus:
 ```
 {service_name="$serviceName"} | json | traceid=`$traceID`
 ```
+
 Wir können die Correlation aber auch über die datasources.yaml konfigurieren. Dabei können wir uns an dieser
-Doku orientieren: https://grafana.com/docs/grafana/latest/administration/correlations/create-a-new-correlation/#create-a-correlation-with-provisioning
+Doku
+orientieren: https://grafana.com/docs/grafana/latest/administration/correlations/create-a-new-correlation/#create-a-correlation-with-provisioning
 
 Dieses Setup ist so konfiguriert, dass du direkt von einem Trace zu den zugehörigen Logs springen kannst.
 
@@ -260,8 +282,58 @@ Dieses Setup ist so konfiguriert, dass du direkt von einem Trace zu den zugehör
 
     Ein Klick auf dieses Symbol öffnet ein neues Fenster mit genau den Logs aus Loki, die während dieser spezifischen Operation geschrieben wurden.
 
+# 🪙 Metriken mit Prometheus und OpenTelemetry
+
+Neben Logs und Traces sind Metriken die dritte Säule der Observability. Sie geben uns aggregierte, numerische Einblicke
+in den Zustand unserer Anwendung über die Zeit.
+
+## Was ist Prometheus?
+
+Prometheus ist ein führendes Open-Source-System zur Überwachung und Alarmierung. Es sammelt und speichert Daten als
+Zeitreihen (Time Series), d.h., Metrikwerte werden zusammen mit einem Zeitstempel erfasst. Dies ist ideal, um Graphen zu
+erstellen und das Verhalten einer Anwendung zu analysieren (z.B. "Wie viele Anfragen pro Sekunde hat unser Service
+letzte Woche verarbeitet?").
+
+In unserem Stack ist Prometheus der Speicher für unsere Anwendungsmetriken. Der Datenfluss sieht so aus:
+
+    Die FastAPI-App erzeugt Metriken (z.B. einen Zähler für verarbeitete Tasks) mit dem OpenTelemetry SDK.
+
+    Alloy empfängt diese Metriken über das OTLP-Protokoll.
+
+    Alloy leitet die Metriken per remote_write an Prometheus weiter.
+
+    Grafana fragt Prometheus ab, um die Metriken zu visualisieren.
+
+## Welche Code-Änderungen waren nötig?
+
+Um die Metriken von der App zu Prometheus zu bekommen, waren zwei Änderungen entscheidend:
+
+    In app.py (Python-Anwendung):
+
+        Änderung: Wir haben dem manuell erstellten MeterProvider einen PeriodicExportingMetricReader mit einem OTLPMetricExporter hinzugefügt.
+
+        Grund: Die OTEL_* Umgebungsvariablen konfigurieren nur die automatische Instrumentierung. Für manuell erstellte Metriken, wie unseren tasks_processed_counter, müssen wir dem Code explizit sagen, wie und wohin er die Metriken exportieren soll. Ohne diesen Codeblock erzeugt die Anwendung zwar Metriken, sendet sie aber nie ab.
+
+    In docker-compose.yaml (Prometheus-Dienst):
+
+        Änderung: Wir haben das Startkommando des Prometheus-Containers um das Flag --web.enable-remote-write-receiver erweitert.
+
+        Grund: Standardmäßig ist Prometheus darauf ausgelegt, Metriken von Zielen aktiv abzufragen (Scraping). In unserem Aufbau sendet Alloy die Metriken jedoch aktiv an Prometheus (Pushing). Dieses Flag aktiviert den Endpunkt, an dem Prometheus diese gesendeten Daten empfangen kann. Ohne es würde Prometheus die Daten von Alloy einfach ablehnen.
+
+## Metriken erkunden
+
+So kannst du deine neuen Metriken in Grafana ansehen:
+
+    Gehe wie gewohnt in den Explore-Bereich (Kompass-Symbol).
+
+    Wähle oben als Datenquelle Prometheus aus.
+
+    Klicke auf den Button Metric explorer oder gib direkt den Namen der Metrik tasks_processed_total in das Abfragefeld ein.
+
+    Klicke auf Run query.
+
+Du siehst nun den Graphen des Zählers. Du kannst die Abfrage weiter verfeinern, z.B. um nur erfolgreiche oder
+fehlgeschlagene Tasks anzuzeigen:
+tasks_processed_total{success="true"}
+
 # ✅ TODO
-
-    [ ] Metriken hinzufügen, wie in der OpenTelemetry-Dokumentation beschrieben.
-
-    [x] Traces und Logs verknüpfen.

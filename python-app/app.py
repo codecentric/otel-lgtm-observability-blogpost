@@ -3,6 +3,7 @@ import random
 import time
 
 from fastapi import FastAPI, HTTPException
+from fastapi import Request
 from opentelemetry import trace, metrics
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -67,7 +68,6 @@ app = FastAPI()
 
 setup_instrumentation(app)
 
-# TODO: Wofür ist das da?
 # 5. Manuelle Metrik-Instrumente erstellen
 meter = metrics.get_meter("fastapi.app.manual.meter")
 
@@ -85,14 +85,14 @@ task_duration_histogram = meter.create_histogram(
 
 
 @app.get("/")
-async def home():
+async def home(request: Request):
     """
     Stellt einen einfachen Willkommens-Endpunkt bereit.
 
     Loggt eine Informationsmeldung für jede eingehende Anfrage und gibt
     eine statische JSON-Antwort zurück.
     """
-    user_ip = "127.0.0.1"
+    user_ip = request.client.host
     logger.info(f"Anfrage auf der Homepage von IP: {user_ip}")
     return {"message": "Willkommen auf der Homepage!"}
 
