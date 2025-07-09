@@ -43,6 +43,18 @@ uvicorn app:app --reload --port 5002
 
 Die API ist nun unter http://localhost:5002 erreichbar.
 
+Die Traces, Logs und Metriken kannst du dir auch lokal an Standardout ausgeben lassen.
+Starte die API und open-telemetry dafür folgendermaßen:
+
+```
+opentelemetry-instrument \
+    --traces_exporter console \
+    --metrics_exporter console \
+    --logs_exporter console \
+    --service_name python-app \
+    uvicorn app:app --host 0.0.0.0 --port 5001
+```
+
 # 🐳 Kompletter Stack mit Docker Compose
 
 1. Alle Dienste starten
