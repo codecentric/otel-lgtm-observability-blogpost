@@ -1,28 +1,28 @@
-🚀 Lokaler Observability Stack mit FastAPI, Alloy, Loki, Tempo, Prometheus & Grafana
+# 🚀 Lokaler Observability Stack mit FastAPI, Alloy, Loki, Tempo, Prometheus & Grafana
 
 Dieses Projekt demonstriert einen vollständigen, lokalen Observability-Stack. Es besteht aus:
 
-    FastAPI App 🐍: Eine einfache Python-Anwendung, die Logs, Traces und Metriken erzeugt.
+- FastAPI App 🐍: Eine einfache Python-Anwendung, die Logs, Traces und Metriken erzeugt.
 
-    Alloy: Ein Agent, der Logs und Traces sammelt und an Loki bzw. Tempo sendet. Hier kannst du den Status des Collectors überprüfen und die rohen Logs oder Traces einsehen.
+- Alloy: Ein Agent, der Logs und Traces sammelt und an Loki bzw. Tempo sendet. Hier kannst du den Status des Collectors überprüfen und die rohen Logs oder Traces einsehen.
 
-    Loki: Ein System zum Speichern und Abfragen von Logs.
+- Loki: Ein System zum Speichern und Abfragen von Logs.
 
-    Tempo: Ein System zum Speichern und Abfragen von Traces.
+- Tempo: Ein System zum Speichern und Abfragen von Traces.
 
-    Prometheus: Ein System zum Speichern und Abfragen von Metriken.
+- Prometheus: Ein System zum Speichern und Abfragen von Metriken.
 
-    Grafana 📊: Ein Dashboard-Tool zur Visualisierung der Logs und Traces.
+- Grafana 📊: Ein Dashboard-Tool zur Visualisierung der Logs und Traces.
 
 Alle Dienste werden über Docker Compose verwaltet.
 
-📋 Voraussetzungen
+# 📋 Voraussetzungen
 
-    Docker
+- Docker
 
-    Docker Compose
+- Docker Compose
 
-    Python 3.9+ (nur für die lokale FastAPI-Entwicklung)
+- Python 3.9+ (nur für die lokale FastAPI-Entwicklung)
 
 # 🌱 Entwicklung des Stacks
 
